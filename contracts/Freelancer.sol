@@ -10,6 +10,8 @@ contract FreelanceContract {
     bool public projectDelivered;
     bool public clientAcceptedDelivery;
     uint256 public deliveryDeadline;
+    uint256 _deliveryDays = 30;
+    uint256 public contractBalance;
 
     // Event emitted when both parties accept the contract
     event ContractAccepted();
@@ -24,8 +26,7 @@ contract FreelanceContract {
     constructor(
         address _client,
         address _developer,
-        uint256 _value,
-        uint256 _deliveryDays
+        uint256 _value
     ) public {
         developer = address(uint160(_developer));
         client = address(uint160(_client));
@@ -36,6 +37,13 @@ contract FreelanceContract {
         contractAccepted = false;
         projectDelivered = false;
         clientAcceptedDelivery = false;
+        addFundsToContract();  
+    }
+
+    // Function to add funds to the contract
+    function addFundsToContract() public payable {
+        require(msg.value > 0, "Value sent must be greater than 0");
+        contractBalance += msg.value;
     }
 
     // Function for the client to accept the contract
@@ -81,47 +89,24 @@ contract FreelanceContract {
         require(projectDelivered, "Project must be delivered first");
         require(clientAcceptedDelivery, "Client must accept project delivery");
         require(msg.sender == developer, "Only the developer can initiate fund transfer");
-        require(address(this).balance >= value, "Insufficient contract balance");
+        require(contractBalance >= value, "Insufficient contract balance");
 
         // fee per transacion
         address payable fee = address(uint160(0x5B38Da6a701c568545dCfcB03FcB875f56beddC4));
-        fee.transfer(value * 0.05);
+        uint256 fee_amount = (value * 5) / 100;
+        fee.transfer(fee_amount);
 
-        bool success = developer.send(value * 0.95);
+        bool success = developer.send(value - fee_amount);
         require(success, "Fund transfer failed");
     }
 
     // Function to request a refund from the client if the project is not delivered on time
     function requestRefund() public {
-    require(msg.sender == client, "Only the client can request a refund");
-    require(!projectDelivered && block.timestamp > deliveryDeadline, "Project has been delivered or deadline not passed");
-    
-    // Provides refund to the customer
-    address payable payableClient = payable(client);
-    payableClient.transfer(value);
+        require(msg.sender == client, "Only the client can request a refund");
+        require(!projectDelivered && block.timestamp > deliveryDeadline, "Project has been delivered or deadline not passed");
+        
+        // Provides refund to the customer
+        client.transfer(value);
     }
 }
 
-
-//
-//    function startProject() public {
-//        // Implement project start actions
-//    }
-//
-//    function developerObligations() public {
-//        // Implement developer obligations
-//    }
-//
-//    function payment() public {
-//        // Implement payment functionality
-//    }
-//
-//    function informAdjustments() public {
-//        // Implement informing adjustments
-//    }
-//
-//    function terminateContract() public {
-//        // Implement termination of the contract
-//    }
-//}
-//

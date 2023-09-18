@@ -7,7 +7,7 @@ contract("FreelanceContract", (accounts) => {
     const value = web3.utils.toWei("1", "ether"); // Convertendo 1 ether para wei
 
     beforeEach(async () => {
-        freelanceContract = await FreelanceContract.new(client, developer, 7);
+        freelanceContract = await FreelanceContract.new(client, developer, value);
     });
 
     it("should allow client and developer to accept the contract", async () => {
