@@ -8,12 +8,16 @@ contract FreelanceContract {
     bool public developerAccepted;
     bool public contractAccepted;
     bool public projectDelivered;
+    bool public clientAcceptedDelivery;
 
     // Event emitted when both parties accept the contract
     event ContractAccepted();
 
     // Event emitted when the project is delivered
     event ProjectDelivered();
+
+    // Event emitted when the client accepts the project delivery
+    event ClientAcceptedDelivery();
 
     // Constructor to initialize the contract
     constructor(
@@ -28,6 +32,7 @@ contract FreelanceContract {
         developerAccepted = false;
         contractAccepted = false;
         projectDelivered = false;
+        clientAcceptedDelivery = false;
     }
 
     // Function for the client to accept the contract
@@ -59,9 +64,18 @@ contract FreelanceContract {
         emit ProjectDelivered();
     }
 
+    // Function for the client to accept the project delivery
+    function acceptProjectDeliveryByClient() public {
+        require(msg.sender == client, "Only the client can accept project delivery");
+        require(projectDelivered, "Project must be delivered first");
+        clientAcceptedDelivery = true;
+        emit ClientAcceptedDelivery();
+    }
+
     // Function to transfer funds to the developer after project delivery
     function transferFundsAfterDelivery() public {
         require(projectDelivered, "Project must be delivered first");
+        require(clientAcceptedDelivery, "Client must accept project delivery");
         require(msg.sender == developer, "Only the developer can initiate fund transfer");
         require(address(this).balance >= value, "Insufficient contract balance");
 

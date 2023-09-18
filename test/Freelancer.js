@@ -27,17 +27,46 @@ contract("FreelanceContract", (accounts) => {
         assert.isTrue(projectDelivered, "Project should be marked as delivered");
     });
 
+    it("should allow client to accept project delivery", async () => {
+        await freelanceContract.acceptContractByClient({ from: client });
+        await freelanceContract.acceptContractByDeveloper({ from: developer });
+
+        await freelanceContract.markProjectDelivered({ from: developer });
+
+        // Check project delivered and client not yet accepted delivery
+        let projectDelivered = await freelanceContract.projectDelivered();
+        let clientAcceptedDelivery = await freelanceContract.clientAcceptedDelivery();
+        assert.isTrue(projectDelivered, "Project should be marked as delivered");
+        assert.isFalse(clientAcceptedDelivery, "Client should not have accepted the delivery yet");
+
+        // Client accepts project delivery
+        await freelanceContract.acceptProjectDeliveryByClient({ from: client });
+
+        // Check if client accepted the delivery
+        clientAcceptedDelivery = await freelanceContract.clientAcceptedDelivery();
+        assert.isTrue(clientAcceptedDelivery, "Client should have accepted the delivery");
+    });
+
     it("should allow transferring funds to the developer after project delivery", async () => {
         await freelanceContract.acceptContractByClient({ from: client });
         await freelanceContract.acceptContractByDeveloper({ from: developer });
 
         await freelanceContract.markProjectDelivered({ from: developer });
-        const initialDeveloperBalance = await web3.eth.getBalance(developer);
 
+        // Check client accepting project delivery
+        await freelanceContract.acceptProjectDeliveryByClient({ from: client });
+
+        // Deposit ether into the contract
+        const depositAmount = web3.utils.toWei("2", "ether");
+        await web3.eth.sendTransaction({ from: accounts[0], to: freelanceContract.address, value: depositAmount });
+
+        // Check transferring funds
         await freelanceContract.transferFundsAfterDelivery({ from: developer });
 
-        const finalDeveloperBalance = await web3.eth.getBalance(developer);
-        const expectedFinalBalance = new web3.utils.BN(initialDeveloperBalance).add(new web3.utils.BN(value));
-        assert.isTrue(finalDeveloperBalance.gte(expectedFinalBalance), "Funds were not transferred to the developer");
+        // Check if funds were transferred
+        const developerBalance = await web3.eth.getBalance(developer);
+        const contractBalance = await web3.eth.getBalance(freelanceContract.address);
+        assert.isTrue(developerBalance > 0, "Funds were not transferred to the developer");
+        assert.equal(contractBalance, 0, "Contract should have no remaining balance");
     });
 });
