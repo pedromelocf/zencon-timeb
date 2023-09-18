@@ -9,6 +9,7 @@ contract FreelanceContract {
     bool public contractAccepted;
     bool public projectDelivered;
     bool public clientAcceptedDelivery;
+    uint256 public deliveryDeadline;
 
     // Event emitted when both parties accept the contract
     event ContractAccepted();
@@ -23,11 +24,13 @@ contract FreelanceContract {
     constructor(
         address _client,
         address _developer,
-        uint256 _value
+        uint256 _value,
+        uint256 _deliveryDays
     ) public {
         developer = address(uint160(_developer));
         client = address(uint160(_client));
         value = _value;
+        deliveryDeadline = block.timestamp + (_deliveryDays * 1 days);
         clientAccepted = false;
         developerAccepted = false;
         contractAccepted = false;
@@ -60,6 +63,7 @@ contract FreelanceContract {
     // Function for the developer to mark the project as delivered
     function markProjectDelivered() public {
         require(msg.sender == developer, "Only the developer can mark the project as delivered");
+        require(block.timestamp <= deliveryDeadline, "Delivery deadline has passed");
         projectDelivered = true;
         emit ProjectDelivered();
     }
@@ -79,8 +83,22 @@ contract FreelanceContract {
         require(msg.sender == developer, "Only the developer can initiate fund transfer");
         require(address(this).balance >= value, "Insufficient contract balance");
 
-        bool success = developer.send(value);
+        // fee per transacion
+        address payable fee = address(uint160(0x5B38Da6a701c568545dCfcB03FcB875f56beddC4));
+        fee.transfer(value * 0.05);
+
+        bool success = developer.send(value * 0.95);
         require(success, "Fund transfer failed");
+    }
+
+    // Function to request a refund from the client if the project is not delivered on time
+    function requestRefund() public {
+    require(msg.sender == client, "Only the client can request a refund");
+    require(!projectDelivered && block.timestamp > deliveryDeadline, "Project has been delivered or deadline not passed");
+    
+    // Provides refund to the customer
+    address payable payableClient = payable(client);
+    payableClient.transfer(value);
     }
 }
 
