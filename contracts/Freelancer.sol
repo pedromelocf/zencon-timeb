@@ -14,7 +14,7 @@ contract FreelanceContract {
     bool public clientAcceptedDelivery;
     uint256 public deliveryDeadline;
     uint256 public closedValue;
-	
+
 	mapping(address => mapping(address => uint256)) public tokensToTransfer;
 
     address public client;
@@ -26,20 +26,10 @@ contract FreelanceContract {
         projectDelivered = false;
     }
 
-    modifier onlyClient() {
-        require(msg.sender == client, "Only the client can call this function");
-        _;
-    }
-
-    modifier onlyDeveloper() {
-        require(msg.sender == developer, "Only the developer can call this function");
-        _;
-    }
-
     event ProjectDelivered();
     event RefundRequested();
 
-    function newTransaction(address _developer, uint256 amount, uint256 deliveryDays) public onlyClient {
+    function newTransaction(address _developer, uint256 amount, uint256 deliveryDays) public {
         require(amount > 0, "Amount should be greater than 0");
         require(deliveryDays > 0, "Delivery days should be greater than 0");
 
@@ -47,18 +37,22 @@ contract FreelanceContract {
         deliveryDeadline = block.timestamp + (deliveryDays * 1 days);
     }
 
-    function markProjectDelivered() public onlyDeveloper {
+    function setDeliveryDays(uint256 _deliveryDays) internal {
+        deliveryDeadline = block.timestamp + (_deliveryDays * 1 days);
+    }
+
+    function markProjectDelivered() public {
         require(block.timestamp <= deliveryDeadline, "Delivery deadline has passed");
         projectDelivered = true;
         emit ProjectDelivered();
     }
 
-    function markClientReceive() public onlyClient {
+    function markClientReceive() public {
         require(projectDelivered, "Project must be delivered first");
         clientAcceptedDelivery = true;
     }
 
-    function transferFundsAfterDelivery() public onlyDeveloper {
+    function transferFundsAfterDelivery() public {
         require(projectDelivered, "Project must be delivered first");
         require(clientAcceptedDelivery, "Client must accept project delivery");
         uint256 amount = tokensToTransfer[client][developer];
@@ -70,12 +64,12 @@ contract FreelanceContract {
         tokensToTransfer[client][developer] = 0;
     }
 
-    function requestRefund() public onlyClient {
+    function requestRefund() public {
         require(!projectDelivered && block.timestamp > deliveryDeadline, "Project has been delivered or deadline not passed");
 
         // Refund the client
-        require(tokenContract.balanceOf(address(this)) >= tokensToTransfer[client][developer], "Insufficient contract balance");
-        tokenContract.transfer(client, tokensToTransfer[client][developer]);
+        require(tokenContract.balanceOf(address(this)) >= closedValue, "Insufficient contract balance");
+        tokenContract.transfer(client, closedValue);
         closedValue = 0;
 
         emit RefundRequested();
