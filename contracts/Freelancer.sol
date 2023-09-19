@@ -2,102 +2,82 @@
 
 pragma solidity ^0.8.0;
 
+// Interface ERC20 padrão
+interface ERC20Token {
+    function transfer(address to, uint256 value) external returns (bool);
+    function balanceOf(address owner) external view returns (uint256);
+}
+
 contract FreelanceContract {
-    address payable public developer;
-    address payable public client;
-    uint256 public closed_value;
-    bool public clientAccepted;
-    bool public developerAccepted;
-    bool public contractAccepted;
+    ERC20Token public tokenContract;
     bool public projectDelivered;
     bool public clientAcceptedDelivery;
     uint256 public deliveryDeadline;
-    uint256 _deliveryDays = 30;
+    uint256 public closedValue;
+	
+	mapping(address => mapping(address => uint256)) public tokensToTransfer;
 
-    // Event emitted when both parties accept the contract
-    event ContractAccepted();
+    address public client;
+    address public developer;
 
-    // Event emitted when the project is delivered
-    event ProjectDelivered();
-
-    // Event emitted when the client accepts the project delivery
-    event ClientAcceptedDelivery();
-
-    // Constructor to initialize the contract
-    constructor(
-        address payable _client,
-        address payable _developer,
-        uint256 _closed_value
-    ) {
-        developer = _developer;
-        client = _client;
-        closed_value = _closed_value;
-        deliveryDeadline = block.timestamp + (_deliveryDays * 1 days);
-        clientAccepted = false;
-        developerAccepted = false;
-        contractAccepted = false;
-        projectDelivered = false;
+    constructor(address _tokenContract) {
+        tokenContract = ERC20Token(_tokenContract);
         clientAcceptedDelivery = false;
+        projectDelivered = false;
     }
 
-    // Function for the client to accept the contract
-    function acceptContractByClient() public {
-        require(msg.sender == client, "Only the client can accept the contract");
-        clientAccepted = true;
-        checkContractAccepted();
+    modifier onlyClient() {
+        require(msg.sender == client, "Only the client can call this function");
+        _;
     }
 
-    // Function for the developer to accept the contract
-    function acceptContractByDeveloper() public {
-        require(msg.sender == developer, "Only the developer can accept the contract");
-        developerAccepted = true;
-        checkContractAccepted();
+    modifier onlyDeveloper() {
+        require(msg.sender == developer, "Only the developer can call this function");
+        _;
     }
 
-    // Check if both parties have accepted the contract
-    function checkContractAccepted() internal {
-        if (clientAccepted && developerAccepted) {
-            contractAccepted = true;
-            emit ContractAccepted();
-        }
+    event ProjectDelivered();
+    event RefundRequested();
+
+    function newTransaction(address _developer, uint256 amount, uint256 deliveryDays) public onlyClient {
+        require(amount > 0, "Amount should be greater than 0");
+        require(deliveryDays > 0, "Delivery days should be greater than 0");
+
+        tokensToTransfer[client][_developer] = amount;
+        deliveryDeadline = block.timestamp + (deliveryDays * 1 days);
     }
 
-    // Function for the developer to mark the project as delivered
-    function markProjectDelivered() public {
-        require(msg.sender == developer, "Only the developer can mark the project as delivered");
+    function markProjectDelivered() public onlyDeveloper {
         require(block.timestamp <= deliveryDeadline, "Delivery deadline has passed");
         projectDelivered = true;
         emit ProjectDelivered();
     }
 
-    // Function for the client to accept the project delivery
-    function acceptProjectDeliveryByClient() public {
-        require(msg.sender == client, "Only the client can accept project delivery");
+    function markClientReceive() public onlyClient {
         require(projectDelivered, "Project must be delivered first");
         clientAcceptedDelivery = true;
-        emit ClientAcceptedDelivery();
     }
 
-    // Function to transfer funds to the developer after project delivery
-    function transferFundsAfterDelivery() public {
+    function transferFundsAfterDelivery() public onlyDeveloper {
         require(projectDelivered, "Project must be delivered first");
         require(clientAcceptedDelivery, "Client must accept project delivery");
-        require(msg.sender == developer, "Only the developer can initiate fund transfer");
+        uint256 amount = tokensToTransfer[client][developer];
+        require(amount > 0, "No tokens to transfer for the specified developer");
 
-        // fee per transacion
+        require(tokenContract.balanceOf(client) >= amount, "Insufficient balance for the client");
+        require(tokenContract.transfer(developer, amount), "Token transfer failed");
 
-        (bool success, ) = developer.call{value: closed_value}("");
-        require(success, "Transfer failed.");
-        closed_value = 0;
+        tokensToTransfer[client][developer] = 0;
     }
 
-    // Function to request a refund from the client if the project is not delivered on time
-    function requestRefund() public {
-        require(msg.sender == client, "Only the client can request a refund");
+    function requestRefund() public onlyClient {
         require(!projectDelivered && block.timestamp > deliveryDeadline, "Project has been delivered or deadline not passed");
-        
-        // Provides refund to the customer
-        client.transfer(closed_value);
+
+        // Refund the client
+        require(tokenContract.balanceOf(address(this)) >= tokensToTransfer[client][developer], "Insufficient contract balance");
+        tokenContract.transfer(client, tokensToTransfer[client][developer]);
+        closedValue = 0;
+
+        emit RefundRequested();
     }
 }
-
