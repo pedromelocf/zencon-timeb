@@ -4,8 +4,8 @@ contract("FreelanceContract", (accounts) => {
     let freelanceContract;
     const client = accounts[1];
     const developer = accounts[2];
-    const value = web3.utils.toWei("1", "ether"); // Convertendo 1 ether para wei
-
+    const value = web3.utils.toWei("1", "ether");
+    
     beforeEach(async () => {
         freelanceContract = await FreelanceContract.new(client, developer, value);
     });
@@ -47,22 +47,22 @@ contract("FreelanceContract", (accounts) => {
         assert.isTrue(clientAcceptedDelivery, "Client should have accepted the delivery");
     });
 
-    it("should allow transferring funds to the developer after project delivery", async () => {
+    it('should transfer funds to the developer after project delivery', async () => {
+        // Aceitar o contrato por ambas as partes
         await freelanceContract.acceptContractByClient({ from: client });
         await freelanceContract.acceptContractByDeveloper({ from: developer });
 
+        // Marcar o projeto como entregue
         await freelanceContract.markProjectDelivered({ from: developer });
 
-        // Check client accepting project delivery
+        // Aceitar a entrega do projeto pelo cliente
         await freelanceContract.acceptProjectDeliveryByClient({ from: client });
 
-        // Check transferring funds
+        const initialDeveloperBalance = await web3.eth.getBalance(developer);
         await freelanceContract.transferFundsAfterDelivery({ from: developer });
+        const updatedDeveloperBalance = await web3.eth.getBalance(developer);
 
-        // Check if funds were transferred
-        const developerBalance = await web3.eth.getBalance(developer);
-        const contractBalance = await web3.eth.getBalance(freelanceContract.address);
-        assert.isTrue(developerBalance > 0, "Funds were not transferred to the developer");
-        assert.equal(contractBalance, 0, "Contract should have no remaining balance");
+        // Verificar se os fundos foram transferidos corretamente
+        assert.isAbove(updatedDeveloperBalance - initialDeveloperBalance, 0);
     });
 });

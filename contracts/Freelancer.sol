@@ -1,9 +1,11 @@
-pragma solidity >=0.4.22 <0.7.0;
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.0;
 
 contract FreelanceContract {
     address payable public developer;
     address payable public client;
-    uint256 public value;
+    uint256 public closed_value;
     bool public clientAccepted;
     bool public developerAccepted;
     bool public contractAccepted;
@@ -11,7 +13,6 @@ contract FreelanceContract {
     bool public clientAcceptedDelivery;
     uint256 public deliveryDeadline;
     uint256 _deliveryDays = 30;
-    uint256 public contractBalance;
 
     // Event emitted when both parties accept the contract
     event ContractAccepted();
@@ -24,26 +25,19 @@ contract FreelanceContract {
 
     // Constructor to initialize the contract
     constructor(
-        address _client,
-        address _developer,
-        uint256 _value
-    ) public {
-        developer = address(uint160(_developer));
-        client = address(uint160(_client));
-        value = _value;
+        address payable _client,
+        address payable _developer,
+        uint256 _closed_value
+    ) {
+        developer = _developer;
+        client = _client;
+        closed_value = _closed_value;
         deliveryDeadline = block.timestamp + (_deliveryDays * 1 days);
         clientAccepted = false;
         developerAccepted = false;
         contractAccepted = false;
         projectDelivered = false;
         clientAcceptedDelivery = false;
-        addFundsToContract();  
-    }
-
-    // Function to add funds to the contract
-    function addFundsToContract() public payable {
-        require(msg.value > 0, "Value sent must be greater than 0");
-        contractBalance += msg.value;
     }
 
     // Function for the client to accept the contract
@@ -89,15 +83,12 @@ contract FreelanceContract {
         require(projectDelivered, "Project must be delivered first");
         require(clientAcceptedDelivery, "Client must accept project delivery");
         require(msg.sender == developer, "Only the developer can initiate fund transfer");
-        require(contractBalance >= value, "Insufficient contract balance");
 
         // fee per transacion
-        address payable fee = address(uint160(0x5B38Da6a701c568545dCfcB03FcB875f56beddC4));
-        uint256 fee_amount = (value * 5) / 100;
-        fee.transfer(fee_amount);
 
-        bool success = developer.send(value - fee_amount);
-        require(success, "Fund transfer failed");
+        (bool success, ) = developer.call{value: closed_value}("");
+        require(success, "Transfer failed.");
+        closed_value = 0;
     }
 
     // Function to request a refund from the client if the project is not delivered on time
@@ -106,7 +97,7 @@ contract FreelanceContract {
         require(!projectDelivered && block.timestamp > deliveryDeadline, "Project has been delivered or deadline not passed");
         
         // Provides refund to the customer
-        client.transfer(value);
+        client.transfer(closed_value);
     }
 }
 

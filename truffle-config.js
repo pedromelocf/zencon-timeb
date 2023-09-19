@@ -1,7 +1,12 @@
 module.exports = {
-  networks: { },
+  networks: {
+    zeniq: {
+      url: "https://smart.zennetwork:9545"
+    }
+  },
   compilers: {
     solc: {
+      version: "^0.8.0",
         settings: {
         optimizer: {
           enabled: true, // Default: false
