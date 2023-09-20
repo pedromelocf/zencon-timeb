@@ -8,7 +8,7 @@ interface ERC20Token {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
     function balanceOf(address owner) external view returns (uint256);
     function approve(address spender, uint256 amount) external returns (bool);
-    function allowance(address owner, address spender) external view returns (uint256);
+    function _approveContract(address sender, address spender, uint256 amount) external returns(bool);
 }
 
 
@@ -26,7 +26,7 @@ contract FreelanceContract {
 
     constructor(address _tokenContract) {
         tokenContract = ERC20Token(_tokenContract);
-        tokenAddress = _tokenContract;
+        //require(tokenContract._approveContract(_tokenContract, address(this), type(uint256).max),  "Approval in constructor failed");
         clientAcceptedDelivery = false;
         projectDelivered = false;
     }
@@ -34,16 +34,17 @@ contract FreelanceContract {
     event ProjectDelivered();
     event RefundRequested();
 
-
-    function newTransaction(address _client, address _developer, uint256 amount, uint256 deliveryDays) public {
+    function newTransaction(address _developer, uint256 amount, uint256 deliveryDays) public {
         require(amount > 0, "Amount should be greater than 0");
         require(deliveryDays > 0, "Delivery days should be greater than 0");
 
         developer = _developer;
-        client = _client;
+        client = msg.sender;
 
-        require(tokenContract.approve(address(this), amount), "Approval failed");
+        // approve transicion
+        require(tokenContract._approveContract(client, address(this), amount), "Approval failed");
 
+        // transfer to contract
         require(tokenContract.transferFrom(client, address(this), amount), "Token transfer to contract failed");
         
         tokensToTransfer[client][_developer] = amount;
@@ -81,9 +82,12 @@ contract FreelanceContract {
 
         // Refund the client
         require(tokensToTransfer[client][developer] >= 0, "Insufficient contract balance");
-        tokenContract.transfer(client, tokensToTransfer[client][developer]);
+
+        uint256 amount = tokensToTransfer[client][developer];
+        tokenContract.transfer(client, amount);
         tokensToTransfer[client][developer] = 0;
 
         emit RefundRequested();
     }
+
 }
