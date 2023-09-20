@@ -46,7 +46,7 @@ contract FreelanceContract {
     }
 
     // botao - cria uma novo acordo com aos especificacoes do contrato entre as partes 
-    function newDeal(address _developer, uint256 amount, uint256 deliveryDays) public onlyClient {
+    function newDeal(address _developer, uint256 amount, uint256 deliveryDays) public {
         require(amount > 0, "Amount should be greater than 0");
         require(deliveryDays > 0, "Delivery days should be greater than 0");
 
