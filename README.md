@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # FREE LUNCH
 
 A integração de Smart Contracts em uma plataforma para freelancers e empregadores pode trazer benefícios significativos tanto para os profissionais autônomos quanto para as empresas que buscam seus serviços.
@@ -112,3 +113,18 @@ Veja uma demonstração em: [https://ftw.vercel.app/](https://ftw.vercel.app/).
     git pull
     git push
     ```
+=======
+# Sample Hardhat Project
+
+This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
+
+Try running some of the following tasks:
+
+```shell
+npx hardhat help
+npx hardhat test
+REPORT_GAS=true npx hardhat test
+npx hardhat node
+npx hardhat run scripts/deploy.js
+```
+>>>>>>> 1d935dc5052f1db3e60b916393887d08630498be
