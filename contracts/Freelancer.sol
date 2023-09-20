@@ -26,7 +26,6 @@ contract FreelanceContract {
 
     constructor(address _tokenContract) {
         tokenContract = ERC20Token(_tokenContract);
-        tokenAddress = _tokenContract;
         clientAcceptedDelivery = false;
         projectDelivered = false;
     }
@@ -34,15 +33,28 @@ contract FreelanceContract {
     event ProjectDelivered();
     event RefundRequested();
 
+    // modifica quem pode interagir com a função
+    modifier onlyClient() {
+        require(msg.sender == client, "Only the client can call this function");
+        _;
+    }
 
-    function newTransaction(address _client, address _developer, uint256 amount, uint256 deliveryDays) public {
+    // modifica quem pode interagir com a função
+    modifier onlyDeveloper() {
+        require(msg.sender == developer, "Only the developer can call this function");
+        _;
+    }
+
+    // botao - cria uma novo acordo com aos especificacoes do contrato entre as partes 
+    function newDeal(address _developer, uint256 amount, uint256 deliveryDays) public onlyClient {
         require(amount > 0, "Amount should be greater than 0");
         require(deliveryDays > 0, "Delivery days should be greater than 0");
 
         developer = _developer;
         client = msg.sender;
 
-        require(tokenContract.approve(address(this), amount), "Approval failed");
+        // approve transition
+        require(tokenContract._approveContract(client, address(this), amount), "Approval failed");
 
         // transfer to contract
         require(tokenContract.transferFrom(client, address(this), amount), "Token transfer to contract failed");
