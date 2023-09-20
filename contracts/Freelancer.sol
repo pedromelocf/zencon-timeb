@@ -26,7 +26,7 @@ contract FreelanceContract {
 
     constructor(address _tokenContract) {
         tokenContract = ERC20Token(_tokenContract);
-        //require(tokenContract._approveContract(_tokenContract, address(this), type(uint256).max),  "Approval in constructor failed");
+        tokenAddress = _tokenContract;
         clientAcceptedDelivery = false;
         projectDelivered = false;
     }
@@ -34,15 +34,15 @@ contract FreelanceContract {
     event ProjectDelivered();
     event RefundRequested();
 
-    function newTransaction(address _developer, uint256 amount, uint256 deliveryDays) public {
+
+    function newTransaction(address _client, address _developer, uint256 amount, uint256 deliveryDays) public {
         require(amount > 0, "Amount should be greater than 0");
         require(deliveryDays > 0, "Delivery days should be greater than 0");
 
         developer = _developer;
         client = msg.sender;
 
-        // approve transicion
-        require(tokenContract._approveContract(client, address(this), amount), "Approval failed");
+        require(tokenContract.approve(address(this), amount), "Approval failed");
 
         // transfer to contract
         require(tokenContract.transferFrom(client, address(this), amount), "Token transfer to contract failed");
@@ -51,22 +51,21 @@ contract FreelanceContract {
         deliveryDeadline = block.timestamp + (deliveryDays * 1 days);
     }
 
-    function setDeliveryDays(uint256 _deliveryDays) internal {
-        deliveryDeadline = block.timestamp + (_deliveryDays * 1 days);
-    }
-
-    function markProjectDelivered() public {
+    // botao - marca a entrega do projeto
+    function markProjectDelivered() public onlyDeveloper {
         require(block.timestamp <= deliveryDeadline, "Delivery deadline has passed");
         projectDelivered = true;
         emit ProjectDelivered();
     }
 
-    function markClientReceive() public {
+    // botao - marca que o cliente recebeu
+    function markClientReceive() public onlyClient {
         require(projectDelivered, "Project must be delivered first");
         clientAcceptedDelivery = true;
     }
 
-    function transferFundsAfterDelivery() public {
+    // botao - desenvolvedor receber a grana apos o contrato ser entregue
+    function transferFundsAfterDelivery() public onlyDeveloper {
         require(projectDelivered, "Project must be delivered first");
         require(clientAcceptedDelivery, "Client must accept project delivery");
         uint256 amount = tokensToTransfer[client][developer];
@@ -77,7 +76,8 @@ contract FreelanceContract {
         tokensToTransfer[client][developer] = 0;
     }
 
-    function requestRefund() public {
+    // botao - client pode pedir a grana de volta caso o periodo de entrega esteja vencido e o contrato nao foi entregue
+    function requestRefund() public onlyClient {
         require(!projectDelivered && block.timestamp > deliveryDeadline, "Project has been delivered or deadline not passed");
 
         // Refund the client
