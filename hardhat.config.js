@@ -1,7 +1,7 @@
 require("@nomicfoundation/hardhat-toolbox");
 
-// Agora você pode acessar as variáveis de ambiente definidas no .env
-const mnemonic = "range crack silent rather comic evidence wrap carbon tower eternal push tenant";
+
+const mnemonic = "";
 
 const accounts = { mnemonic };
 
