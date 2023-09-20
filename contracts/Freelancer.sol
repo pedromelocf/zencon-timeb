@@ -5,23 +5,28 @@ pragma solidity ^0.8.0;
 // Interface ERC20 padrão
 interface ERC20Token {
     function transfer(address to, uint256 value) external returns (bool);
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
     function balanceOf(address owner) external view returns (uint256);
+    function approve(address spender, uint256 amount) external returns (bool);
+    function allowance(address owner, address spender) external view returns (uint256);
 }
+
 
 contract FreelanceContract {
     ERC20Token public tokenContract;
     bool public projectDelivered;
     bool public clientAcceptedDelivery;
     uint256 public deliveryDeadline;
-    uint256 public closedValue;
 
-	mapping(address => mapping(address => uint256)) public tokensToTransfer;
+	mapping(address => mapping(address => uint256)) internal tokensToTransfer;
 
     address public client;
     address public developer;
+    address public tokenAddress;
 
     constructor(address _tokenContract) {
         tokenContract = ERC20Token(_tokenContract);
+        tokenAddress = _tokenContract;
         clientAcceptedDelivery = false;
         projectDelivered = false;
     }
@@ -29,10 +34,18 @@ contract FreelanceContract {
     event ProjectDelivered();
     event RefundRequested();
 
-    function newTransaction(address _developer, uint256 amount, uint256 deliveryDays) public {
+
+    function newTransaction(address _client, address _developer, uint256 amount, uint256 deliveryDays) public {
         require(amount > 0, "Amount should be greater than 0");
         require(deliveryDays > 0, "Delivery days should be greater than 0");
 
+        developer = _developer;
+        client = _client;
+
+        require(tokenContract.approve(address(this), amount), "Approval failed");
+
+        require(tokenContract.transferFrom(client, address(this), amount), "Token transfer to contract failed");
+        
         tokensToTransfer[client][_developer] = amount;
         deliveryDeadline = block.timestamp + (deliveryDays * 1 days);
     }
@@ -58,7 +71,6 @@ contract FreelanceContract {
         uint256 amount = tokensToTransfer[client][developer];
         require(amount > 0, "No tokens to transfer for the specified developer");
 
-        require(tokenContract.balanceOf(client) >= amount, "Insufficient balance for the client");
         require(tokenContract.transfer(developer, amount), "Token transfer failed");
 
         tokensToTransfer[client][developer] = 0;
@@ -68,9 +80,9 @@ contract FreelanceContract {
         require(!projectDelivered && block.timestamp > deliveryDeadline, "Project has been delivered or deadline not passed");
 
         // Refund the client
-        require(tokenContract.balanceOf(address(this)) >= closedValue, "Insufficient contract balance");
-        tokenContract.transfer(client, closedValue);
-        closedValue = 0;
+        require(tokensToTransfer[client][developer] >= 0, "Insufficient contract balance");
+        tokenContract.transfer(client, tokensToTransfer[client][developer]);
+        tokensToTransfer[client][developer] = 0;
 
         emit RefundRequested();
     }
