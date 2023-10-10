@@ -1,13 +1,17 @@
-# Sample Hardhat Project
+# ZenCon Hackaton at Rio 2023
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
 
-Try running some of the following tasks:
+## Our Team
 
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.js
-```
+![download](https://github.com/pedromelocf/zencon-timeb/assets/87016359/57ed70cc-c54f-47c0-aa9b-d787e076350b)
+
+
+## Our Product Presentation
+
+- Intermediate contracts between developers and contractors using zeniq smartchain.
+- Provides safety for both parties and remove any kind of geolocation/payment methods issues in a scalable way.
+- https://github.com/pedromelocf/zencon-timeb/blob/main/apresentacao.pdf
+
+## Code 
+
+- https://github.com/pedromelocf/zencon-timeb/tree/main
